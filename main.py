@@ -37,19 +37,178 @@ OFFICIAL_EMAIL = "ramordhelp@gmail.com"
 APP_DIR = Path(__file__).resolve().parent
 ICON_PATH = APP_DIR / "assets/ramord-store.svg"
 
-# Palette: RamordCommunity Obsidian Luxury & Dark Turquoise Theme
-PRIMARY = "#14c8b2"
-PRIMARY_HOVER = "#18e0c8"
-PRIMARY_DARK = "#005a48"
-BG_GRADIENT_START = "#102127"
-BG_GRADIENT_MID = "#0b171b"
-BG_GRADIENT_END = "#071013"
-CARD_BG = "rgba(11, 23, 27, 0.78)"
-CARD_BORDER = "rgba(20, 200, 178, 0.18)"
-TEXT = "#f3f8f8"
-DIM = "#7f9997"
+# Theme Palettes: Solid Day & Night Modes (User-Specified)
+THEMES = {
+    "day": {
+        "bg": "#F4F1EA",
+        "card": "#EFECE6",
+        "card_border": "rgba(26, 51, 40, 0.15)",
+        "text": "#2B2A27",
+        "dim": "#6B6862",
+        "accent": "#1A3328",
+        "accent_hover": "#284e3e",
+        "accent_text": "#F4F1EA",
+        "btn_ghost_bg": "rgba(26, 51, 40, 0.08)",
+        "btn_ghost_border": "rgba(26, 51, 40, 0.22)",
+        "menu_bg": "#EFECE6",
+        "menu_sel": "rgba(26, 51, 40, 0.15)",
+    },
+    "night": {
+        "bg": "#080C0A",
+        "card": "#101613",
+        "card_border": "rgba(88, 158, 123, 0.20)",
+        "text": "#E8E4DA",
+        "dim": "#8A948E",
+        "accent": "#589E7B",
+        "accent_hover": "#6db893",
+        "accent_text": "#080C0A",
+        "btn_ghost_bg": "rgba(88, 158, 123, 0.10)",
+        "btn_ghost_border": "rgba(88, 158, 123, 0.25)",
+        "menu_bg": "#101613",
+        "menu_sel": "rgba(88, 158, 123, 0.20)",
+    }
+}
+
+ACTIVE_THEME_KEY = "night"
+PRIMARY = THEMES["night"]["accent"]
+PRIMARY_HOVER = THEMES["night"]["accent_hover"]
+PRIMARY_DARK = THEMES["night"]["accent"]
+TEXT = THEMES["night"]["text"]
+DIM = THEMES["night"]["dim"]
 AMBER = "#f59e0b"
 GREEN = "#10b981"
+
+def detect_system_theme() -> str:
+    try:
+        res = subprocess.run(["gsettings", "get", "org.gnome.desktop.interface", "color-scheme"],
+                             capture_output=True, text=True, timeout=1)
+        out = res.stdout.lower()
+        if "dark" in out:
+            return "night"
+        if "light" in out or "default" in out:
+            return "day"
+    except Exception:
+        pass
+    return "night"
+
+def build_qss(theme_name: str) -> str:
+    t_cfg = THEMES.get(theme_name, THEMES["night"])
+    bg = t_cfg["bg"]
+    card = t_cfg["card"]
+    card_border = t_cfg["card_border"]
+    text = t_cfg["text"]
+    dim = t_cfg["dim"]
+    accent = t_cfg["accent"]
+    accent_hover = t_cfg["accent_hover"]
+    accent_text = t_cfg["accent_text"]
+    btn_ghost_bg = t_cfg["btn_ghost_bg"]
+    btn_ghost_border = t_cfg["btn_ghost_border"]
+    menu_bg = t_cfg["menu_bg"]
+    menu_sel = t_cfg["menu_sel"]
+
+    return f"""
+QMainWindow {{
+    background: {bg};
+    color: {text};
+}}
+QWidget {{
+    color: {text};
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    font-size: 13px;
+}}
+QScrollArea {{
+    background: transparent;
+    border: none;
+}}
+#card {{
+    background-color: {card};
+    border: 1px solid {card_border};
+    border-radius: 16px;
+}}
+#card:hover {{
+    border: 1px solid {accent};
+}}
+#title {{
+    font-size: 24px;
+    font-weight: 700;
+    color: {text};
+    letter-spacing: -0.5px;
+}}
+#subtitle {{
+    font-size: 13px;
+    color: {dim};
+}}
+#appName {{
+    font-size: 17px;
+    font-weight: 700;
+    color: {text};
+}}
+#appDesc {{
+    font-size: 13px;
+    color: {dim};
+    line-height: 1.4;
+}}
+#statusInstalled {{
+    color: {accent};
+    font-weight: 600;
+    font-size: 12px;
+}}
+#statusNotInstalled {{
+    color: {dim};
+    font-weight: 600;
+    font-size: 12px;
+}}
+QPushButton {{
+    background-color: {btn_ghost_bg};
+    border: 1px solid {btn_ghost_border};
+    border-radius: 10px;
+    padding: 8px 16px;
+    font-weight: 600;
+    color: {text};
+}}
+QPushButton:hover {{
+    background-color: {accent};
+    color: {accent_text};
+    border-color: {accent};
+}}
+QPushButton#btnPrimary {{
+    background-color: {accent};
+    border: 1px solid {accent};
+    color: {accent_text};
+    font-weight: 700;
+}}
+QPushButton#btnPrimary:hover {{
+    background-color: {accent_hover};
+    border-color: {accent_hover};
+}}
+QPushButton#btnSupport {{
+    background-color: transparent;
+    border: 1px solid {card_border};
+    color: {dim};
+}}
+QPushButton#btnSupport:hover {{
+    border-color: {accent};
+    color: {accent};
+    background-color: {btn_ghost_bg};
+}}
+QComboBox {{
+    background-color: {card};
+    border: 1px solid {card_border};
+    border-radius: 8px;
+    padding: 5px 12px;
+    color: {text};
+}}
+QComboBox:hover {{
+    border-color: {accent};
+}}
+QComboBox QAbstractItemView {{
+    background-color: {menu_bg};
+    border: 1px solid {card_border};
+    selection-background-color: {menu_sel};
+    selection-color: {accent};
+}}
+"""
+
 
 
 @dataclass
@@ -93,109 +252,7 @@ APPS: list[AppMeta] = [
     ),
 ]
 
-STYLE = f"""
-QMainWindow {{
-    background: qradialgradient(cx: 0.5, cy: 0.25, radius: 0.85, fx: 0.5, fy: 0.25,
-        stop: 0 {BG_GRADIENT_START}, stop: 0.5 {BG_GRADIENT_MID}, stop: 1 {BG_GRADIENT_END});
-    color: {TEXT};
-}}
-QWidget {{
-    color: {TEXT};
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-    font-size: 13px;
-}}
-QScrollArea {{
-    background: transparent;
-    border: none;
-}}
-#card {{
-    background-color: {CARD_BG};
-    border: 1px solid {CARD_BORDER};
-    border-radius: 16px;
-}}
-#card:hover {{
-    border: 1px solid rgba(20, 200, 178, 0.45);
-}}
-#title {{
-    font-size: 24px;
-    font-weight: 700;
-    color: {TEXT};
-    letter-spacing: -0.5px;
-}}
-#subtitle {{
-    font-size: 13px;
-    color: {DIM};
-}}
-#appName {{
-    font-size: 17px;
-    font-weight: 700;
-    color: {TEXT};
-}}
-#appDesc {{
-    font-size: 13px;
-    color: {DIM};
-    line-height: 1.4;
-}}
-#statusInstalled {{
-    color: {GREEN};
-    font-weight: 600;
-    font-size: 12px;
-}}
-#statusNotInstalled {{
-    color: {DIM};
-    font-weight: 600;
-    font-size: 12px;
-}}
-QPushButton {{
-    background-color: rgba(20, 200, 178, 0.12);
-    border: 1px solid rgba(20, 200, 178, 0.35);
-    border-radius: 10px;
-    padding: 8px 16px;
-    font-weight: 600;
-    color: {TEXT};
-}}
-QPushButton:hover {{
-    background-color: {PRIMARY};
-    color: #071013;
-    border-color: {PRIMARY};
-}}
-QPushButton#btnPrimary {{
-    background-color: {PRIMARY};
-    border: 1px solid {PRIMARY};
-    color: #071013;
-    font-weight: 700;
-}}
-QPushButton#btnPrimary:hover {{
-    background-color: {PRIMARY_HOVER};
-    border-color: {PRIMARY_HOVER};
-}}
-QPushButton#btnSupport {{
-    background-color: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: {DIM};
-}}
-QPushButton#btnSupport:hover {{
-    border-color: {PRIMARY};
-    color: {PRIMARY};
-    background-color: rgba(20, 200, 178, 0.08);
-}}
-QComboBox {{
-    background-color: rgba(11, 23, 27, 0.85);
-    border: 1px solid {CARD_BORDER};
-    border-radius: 8px;
-    padding: 5px 12px;
-    color: {TEXT};
-}}
-QComboBox:hover {{
-    border-color: {PRIMARY};
-}}
-QComboBox QAbstractItemView {{
-    background-color: #0b171b;
-    border: 1px solid {CARD_BORDER};
-    selection-background-color: {PRIMARY};
-    selection-color: #071013;
-}}
-"""
+STYLE = build_qss(ACTIVE_THEME_KEY)
 
 
 class InstallWorker(QThread):
@@ -240,6 +297,8 @@ class MainWindow(QMainWindow):
             self.setWindowIcon(QIcon(str(ICON_PATH)))
 
         self._workers: list[InstallWorker] = []
+        self.theme_mode = "auto"
+        self._apply_active_theme(self._resolve_theme_key(self.theme_mode))
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -271,6 +330,13 @@ class MainWindow(QMainWindow):
         h_text.addWidget(self.subtitle_lbl)
         header.addLayout(h_text)
         header.addStretch()
+
+        # Theme dropdown
+        self.theme_combo = QComboBox()
+        self.theme_combo.setCursor(Qt.PointingHandCursor)
+        self._rebuild_theme_combo()
+        self.theme_combo.currentIndexChanged.connect(self._on_theme_changed)
+        header.addWidget(self.theme_combo)
 
         # Language dropdown
         self.lang_combo = QComboBox()
@@ -479,6 +545,45 @@ class MainWindow(QMainWindow):
         self.btn_copy_mail.setText(t("copied"))
         QTimer.singleShot(2000, lambda: self.btn_copy_mail.setText(t("btn_copy_email")))
 
+    def _resolve_theme_key(self, mode: str) -> str:
+        if mode in ("day", "night"):
+            return mode
+        return detect_system_theme()
+
+    def _apply_active_theme(self, theme_key: str) -> None:
+        global ACTIVE_THEME_KEY, PRIMARY, PRIMARY_HOVER, PRIMARY_DARK, TEXT, DIM
+        ACTIVE_THEME_KEY = theme_key
+        t_cfg = THEMES.get(theme_key, THEMES["night"])
+        PRIMARY = t_cfg["accent"]
+        PRIMARY_HOVER = t_cfg["accent_hover"]
+        PRIMARY_DARK = t_cfg["accent"]
+        TEXT = t_cfg["text"]
+        DIM = t_cfg["dim"]
+
+        app = QApplication.instance()
+        if app is not None:
+            app.setStyleSheet(build_qss(theme_key))
+        if hasattr(self, "email_display"):
+            self.email_display.setStyleSheet(f"color: {PRIMARY}; font-size: 15px;")
+
+    def _rebuild_theme_combo(self) -> None:
+        if not hasattr(self, "theme_combo"):
+            return
+        self.theme_combo.blockSignals(True)
+        self.theme_combo.clear()
+        self.theme_combo.addItem(f"{t('theme_auto')}", "auto")
+        self.theme_combo.addItem(f"{t('theme_day')}", "day")
+        self.theme_combo.addItem(f"{t('theme_night')}", "night")
+        idx = {"auto": 0, "day": 1, "night": 2}.get(self.theme_mode, 0)
+        self.theme_combo.setCurrentIndex(idx)
+        self.theme_combo.blockSignals(False)
+
+    def _on_theme_changed(self, index: int) -> None:
+        mode = self.theme_combo.itemData(index)
+        if mode in ("auto", "day", "night"):
+            self.theme_mode = mode
+            self._apply_active_theme(self._resolve_theme_key(mode))
+
     def _on_lang_changed(self, index: int) -> None:
         code = self.lang_combo.itemData(index)
         if code in LANGUAGES:
@@ -493,6 +598,7 @@ class MainWindow(QMainWindow):
         self.support_desc.setText(t("support_desc"))
         self.btn_open_mail.setText(t("btn_send_email"))
         self.btn_copy_mail.setText(t("btn_copy_email"))
+        self._rebuild_theme_combo()
 
         for app_id, c in self._app_cards.items():
             meta: AppMeta = c["meta"]

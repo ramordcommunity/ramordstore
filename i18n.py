@@ -204,6 +204,30 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "fr": "Visualiseur et outil d'inspection 3D SLDPRT, STEP et DWG haute performance pour bureau et mobile.",
         "it": "Visualizzatore e strumento di ispezione 3D SLDPRT, STEP e DWG ad alte prestazioni per desktop e dispositivi mobili.",
     },
+    "theme_auto": {
+        "tr": "Sistem Teması",
+        "en": "System Theme",
+        "de": "Systemthema",
+        "es": "Tema del Sistema",
+        "fr": "Thème du Système",
+        "it": "Tema di Sistema",
+    },
+    "theme_day": {
+        "tr": "Gündüz Modu",
+        "en": "Day Mode",
+        "de": "Tagmodus",
+        "es": "Modo Día",
+        "fr": "Mode Jour",
+        "it": "Modalità Giorno",
+    },
+    "theme_night": {
+        "tr": "Gece Modu",
+        "en": "Night Mode",
+        "de": "Nachtmodus",
+        "es": "Modo Noche",
+        "fr": "Mode Nuit",
+        "it": "Modalità Notte",
+    },
 }
 
 _CURRENT_LANG: str = "tr"
