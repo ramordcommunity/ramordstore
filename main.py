@@ -461,6 +461,7 @@ class RamordStoreWindow(Adw.ApplicationWindow):
                     if install_sh.exists():
                         askpass_bin = str(Path.home() / ".local/bin/ramord-askpass")
                         env = os.environ.copy()
+                        env["PATH"] = f"{Path.home()}/.local/bin:" + env.get("PATH", "")
                         if Path(askpass_bin).exists():
                             env["SUDO_ASKPASS"] = askpass_bin
                             env["SSH_ASKPASS"] = askpass_bin
