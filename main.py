@@ -404,10 +404,12 @@ class MainWindow(QMainWindow):
         btn_action = QPushButton()
         btn_action.setObjectName("btnPrimary")
         btn_action.setCursor(Qt.PointingHandCursor)
+        btn_action.clicked.connect(lambda _=False, m=meta: self._install_app(m))
         top_row.addWidget(btn_action)
 
         btn_launch = QPushButton(t("btn_launch"))
         btn_launch.setCursor(Qt.PointingHandCursor)
+        btn_launch.clicked.connect(lambda _=False, m=meta: self._launch_app(m))
         top_row.addWidget(btn_launch)
 
         btn_mail = QPushButton(t("btn_support_app"))
@@ -492,8 +494,6 @@ class MainWindow(QMainWindow):
             c["btn_action"].setText(t("btn_update"))
             c["btn_action"].setObjectName("")
             c["btn_launch"].setVisible(True)
-            c["btn_launch"].clicked.disconnect() if c["btn_launch"].receivers(c["btn_launch"].clicked) > 0 else None
-            c["btn_launch"].clicked.connect(lambda _=False, m=meta: self._launch_app(m))
         else:
             c["status_lbl"].setText(f"○ {t('status_not_installed')}")
             c["status_lbl"].setObjectName("statusNotInstalled")
@@ -501,9 +501,6 @@ class MainWindow(QMainWindow):
             c["btn_action"].setText(t("btn_install"))
             c["btn_action"].setObjectName("btnPrimary")
             c["btn_launch"].setVisible(False)
-
-        c["btn_action"].clicked.disconnect() if c["btn_action"].receivers(c["btn_action"].clicked) > 0 else None
-        c["btn_action"].clicked.connect(lambda _=False, m=meta: self._install_app(m))
 
     def _install_app(self, meta: AppMeta) -> None:
         c = self._app_cards.get(meta.id)
