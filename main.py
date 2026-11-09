@@ -66,7 +66,16 @@ APPS: list[AppMeta] = [
         icon_rel_path="/home/ramordser/Projeler/RamordCast/assets/ramordcast.png",
         desktop_file="com.ramord.cast.desktop",
     ),
-    AppMeta(
+        AppMeta(
+        id="ramord-camera",
+        name="Ramord Camera",
+        desc_key="desc_ramord_camera",
+        repo_url="https://github.com/ramordcommunity/ramordcamera.git",
+        bin_name="ramord-camera",
+        icon_rel_path="/home/ramordser/Projeler/RamordCamera/assets/ramord-camera.svg",
+        desktop_file="ramord-camera.desktop",
+    ),
+AppMeta(
         id="ramord-cad",
         name="Ramord CAD",
         desc_key="desc_ramord_cad",

@@ -196,7 +196,15 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "fr": "Mise en miroir sans fil à faible latence et deuxième écran virtuel pour Smart TV et moniteurs sous Linux.",
         "it": "Duplicazione schermo wireless a bassa latenza e secondo display virtuale per Smart TV e monitor.",
     },
-    "desc_ramord_cad": {
+        "desc_ramord_camera": {
+        "tr": "Video konferans ve yayınlar için Sony S-Cinetone sinematik renk dokusu ve canlı Ramord Community logosu ekleyen sanal kamera stüdyosu.",
+        "en": "Virtual camera studio applying Sony S-Cinetone cinematic color grading and live Ramord Community watermark overlay for video conferences.",
+        "de": "Virtuelles Kamerastudio mit kinoreifer Sony S-Cinetone-Farbkorrektur und Ramord Community-Wasserzeichen für Videokonferenzen.",
+        "es": "Estudio de cámara virtual que aplica gradación de color cinematográfica Sony S-Cinetone y logotipo de Ramord Community para conferencias.",
+        "fr": "Studio de caméra virtuelle appliquant un étalonnage Sony S-Cinetone et le filigrane Ramord Community pour les visioconférences.",
+        "it": "Studio per telecamera virtuale con gradazione colore cinematografica Sony S-Cinetone e logo Ramord Community per videoconferenze.",
+    },
+"desc_ramord_cad": {
         "tr": "Masaüstü ve mobil platformlar için yüksek performanslı 3D SLDPRT, STEP ve DWG mühendislik görüntüleme ve inceleme aracı.",
         "en": "High-performance 3D SLDPRT, STEP, and DWG engineering viewer and inspection tool for desktop and mobile platforms.",
         "de": "Hochleistungs-3D-SLDPRT-, STEP- und DWG-Engineering-Viewer und Prüfwerkzeug für Desktop und Mobilgeräte.",
