@@ -93,3 +93,18 @@ fi
 echo "==> Ramord Store installed successfully!"
 echo "    Binary:  ${TARGET_BIN}"
 echo "    Desktop: ${DESKTOP_DIR}/ramord-store.desktop"
+
+# Deploy Ramord GUI askpass helper
+mkdir -p "${BIN_DIR}"
+cat << 'ASKPASS_EOF' > "${BIN_DIR}/ramord-askpass"
+#!/usr/bin/env bash
+PROMPT="${1:-Yönetici (sudo) Şifresi / Administrator Password:}"
+if command -v kdialog >/dev/null 2>&1; then
+    kdialog --password "${PROMPT}"
+elif command -v zenity >/dev/null 2>&1; then
+    zenity --password --title="Ramord Authorization"
+elif command -v pkexec >/dev/null 2>&1; then
+    pkexec echo ""
+fi
+ASKPASS_EOF
+chmod +x "${BIN_DIR}/ramord-askpass"

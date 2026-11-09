@@ -459,8 +459,13 @@ class RamordStoreWindow(Adw.ApplicationWindow):
                 if success:
                     install_sh = proj_dir / "install.sh"
                     if install_sh.exists():
+                        askpass_bin = str(Path.home() / ".local/bin/ramord-askpass")
+                        env = os.environ.copy()
+                        if Path(askpass_bin).exists():
+                            env["SUDO_ASKPASS"] = askpass_bin
+                            env["SSH_ASKPASS"] = askpass_bin
                         r2 = subprocess.run(["bash", str(install_sh)], cwd=str(proj_dir),
-                                            capture_output=True, text=True, timeout=120)
+                                            env=env, capture_output=True, text=True, timeout=180)
                         if r2.returncode != 0:
                             success = False
                             msg = r2.stderr or r2.stdout
