@@ -1,35 +1,27 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Ramord Store - Official Desktop Hub for Linux
 Allows one-click installation, launching, updating, and direct email support for Ramord applications.
-Compliant with Obsidian Luxury & Dark Turquoise Design and Ramord System Rules.
+Built with GTK4 & Libadwaita (Apple-like modern unified window and header bar), 6 Languages.
 Official Contact: ramordhelp@gmail.com
 """
 
-from __future__ import annotations
 import os
-import shutil
-import subprocess
 import sys
+import shutil
+import signal
+import subprocess
+import threading
 import urllib.parse
+import html
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, QThread, Signal
-from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap, QDesktopServices, QPen
-from PySide6.QtWidgets import (
-    QApplication,
-    QComboBox,
-    QFrame,
-    QHBoxLayout,
-    QLabel,
-    QMainWindow,
-    QMessageBox,
-    QPushButton,
-    QScrollArea,
-    QVBoxLayout,
-    QWidget,
-)
+import gi
+gi.require_version('Gtk', '4.0')
+gi.require_version('Adw', '1')
+from gi.repository import Gtk, Adw, GLib, Gio, Gdk
 
 from i18n import LANGUAGES, get_lang, set_lang, t
 
@@ -37,178 +29,11 @@ OFFICIAL_EMAIL = "ramordhelp@gmail.com"
 APP_DIR = Path(__file__).resolve().parent
 ICON_PATH = APP_DIR / "assets/ramord-store.svg"
 
-# Theme Palettes: Solid Day & Night Modes (User-Specified)
-THEMES = {
-    "day": {
-        "bg": "#F4F1EA",
-        "card": "#EFECE6",
-        "card_border": "rgba(26, 51, 40, 0.15)",
-        "text": "#2B2A27",
-        "dim": "#6B6862",
-        "accent": "#1A3328",
-        "accent_hover": "#284e3e",
-        "accent_text": "#F4F1EA",
-        "btn_ghost_bg": "rgba(26, 51, 40, 0.08)",
-        "btn_ghost_border": "rgba(26, 51, 40, 0.22)",
-        "menu_bg": "#EFECE6",
-        "menu_sel": "rgba(26, 51, 40, 0.15)",
-    },
-    "night": {
-        "bg": "#080C0A",
-        "card": "#101613",
-        "card_border": "rgba(88, 158, 123, 0.20)",
-        "text": "#E8E4DA",
-        "dim": "#8A948E",
-        "accent": "#589E7B",
-        "accent_hover": "#6db893",
-        "accent_text": "#080C0A",
-        "btn_ghost_bg": "rgba(88, 158, 123, 0.10)",
-        "btn_ghost_border": "rgba(88, 158, 123, 0.25)",
-        "menu_bg": "#101613",
-        "menu_sel": "rgba(88, 158, 123, 0.20)",
-    }
-}
 
-ACTIVE_THEME_KEY = "night"
-PRIMARY = THEMES["night"]["accent"]
-PRIMARY_HOVER = THEMES["night"]["accent_hover"]
-PRIMARY_DARK = THEMES["night"]["accent"]
-TEXT = THEMES["night"]["text"]
-DIM = THEMES["night"]["dim"]
-AMBER = "#f59e0b"
-GREEN = "#10b981"
-
-def detect_system_theme() -> str:
-    try:
-        res = subprocess.run(["gsettings", "get", "org.gnome.desktop.interface", "color-scheme"],
-                             capture_output=True, text=True, timeout=1)
-        out = res.stdout.lower()
-        if "dark" in out:
-            return "night"
-        if "light" in out or "default" in out:
-            return "day"
-    except Exception:
-        pass
-    return "night"
-
-def build_qss(theme_name: str) -> str:
-    t_cfg = THEMES.get(theme_name, THEMES["night"])
-    bg = t_cfg["bg"]
-    card = t_cfg["card"]
-    card_border = t_cfg["card_border"]
-    text = t_cfg["text"]
-    dim = t_cfg["dim"]
-    accent = t_cfg["accent"]
-    accent_hover = t_cfg["accent_hover"]
-    accent_text = t_cfg["accent_text"]
-    btn_ghost_bg = t_cfg["btn_ghost_bg"]
-    btn_ghost_border = t_cfg["btn_ghost_border"]
-    menu_bg = t_cfg["menu_bg"]
-    menu_sel = t_cfg["menu_sel"]
-
-    return f"""
-QMainWindow {{
-    background: {bg};
-    color: {text};
-}}
-QWidget {{
-    color: {text};
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-    font-size: 13px;
-}}
-QScrollArea {{
-    background: transparent;
-    border: none;
-}}
-#card {{
-    background-color: {card};
-    border: 1px solid {card_border};
-    border-radius: 16px;
-}}
-#card:hover {{
-    border: 1px solid {accent};
-}}
-#title {{
-    font-size: 24px;
-    font-weight: 700;
-    color: {text};
-    letter-spacing: -0.5px;
-}}
-#subtitle {{
-    font-size: 13px;
-    color: {dim};
-}}
-#appName {{
-    font-size: 17px;
-    font-weight: 700;
-    color: {text};
-}}
-#appDesc {{
-    font-size: 13px;
-    color: {dim};
-    line-height: 1.4;
-}}
-#statusInstalled {{
-    color: {accent};
-    font-weight: 600;
-    font-size: 12px;
-}}
-#statusNotInstalled {{
-    color: {dim};
-    font-weight: 600;
-    font-size: 12px;
-}}
-QPushButton {{
-    background-color: {btn_ghost_bg};
-    border: 1px solid {btn_ghost_border};
-    border-radius: 10px;
-    padding: 8px 16px;
-    font-weight: 600;
-    color: {text};
-}}
-QPushButton:hover {{
-    background-color: {accent};
-    color: {accent_text};
-    border-color: {accent};
-}}
-QPushButton#btnPrimary {{
-    background-color: {accent};
-    border: 1px solid {accent};
-    color: {accent_text};
-    font-weight: 700;
-}}
-QPushButton#btnPrimary:hover {{
-    background-color: {accent_hover};
-    border-color: {accent_hover};
-}}
-QPushButton#btnSupport {{
-    background-color: transparent;
-    border: 1px solid {card_border};
-    color: {dim};
-}}
-QPushButton#btnSupport:hover {{
-    border-color: {accent};
-    color: {accent};
-    background-color: {btn_ghost_bg};
-}}
-QComboBox {{
-    background-color: {card};
-    border: 1px solid {card_border};
-    border-radius: 8px;
-    padding: 5px 12px;
-    color: {text};
-}}
-QComboBox:hover {{
-    border-color: {accent};
-}}
-QComboBox QAbstractItemView {{
-    background-color: {menu_bg};
-    border: 1px solid {card_border};
-    selection-background-color: {menu_sel};
-    selection-color: {accent};
-}}
-"""
-
+def detect_system_language():
+    raw = os.environ.get('LC_ALL') or os.environ.get('LC_MESSAGES') or os.environ.get('LANG') or 'en'
+    code = raw.split('.')[0].split('_')[0].lower()
+    return code if code in LANGUAGES else 'en'
 
 
 @dataclass
@@ -252,370 +77,509 @@ APPS: list[AppMeta] = [
     ),
 ]
 
-STYLE = build_qss(ACTIVE_THEME_KEY)
 
+class RamordStoreWindow(Adw.ApplicationWindow):
+    def __init__(self, app):
+        super().__init__(application=app, title="Ramord Store")
+        self.set_default_size(780, 840)
+        self.set_icon_name("ramord-store")
 
-class InstallWorker(QThread):
-    finished_signal = Signal(bool, str)
+        self.current_lang = detect_system_language()
+        set_lang(self.current_lang)
 
-    def __init__(self, app_meta: AppMeta) -> None:
-        super().__init__()
-        self.meta = app_meta
-
-    def run(self) -> None:
-        target_dir = Path.home() / f"Projeler/{self.meta.name.replace(' ', '')}"
-        try:
-            if not target_dir.exists():
-                subprocess.run(
-                    ["git", "clone", self.meta.repo_url, str(target_dir)],
-                    check=True,
-                    capture_output=True,
-                )
-            else:
-                subprocess.run(
-                    ["git", "-C", str(target_dir), "pull", "origin", "main"],
-                    check=False,
-                    capture_output=True,
-                )
-
-            install_sh = target_dir / "install.sh"
-            if install_sh.exists():
-                subprocess.run(["bash", str(install_sh)], check=True, capture_output=True)
-
-            self.finished_signal.emit(True, self.meta.id)
-        except Exception as e:
-            self.finished_signal.emit(False, str(e))
-
-
-class MainWindow(QMainWindow):
-    def __init__(self) -> None:
-        super().__init__()
-        self.setWindowTitle(t("app_title"))
-        self.setMinimumSize(820, 680)
-        self.resize(880, 780)
-        if ICON_PATH.exists():
-            self.setWindowIcon(QIcon(str(ICON_PATH)))
-
-        self._workers: list[InstallWorker] = []
         self.theme_mode = "auto"
-        self._apply_active_theme(self._resolve_theme_key(self.theme_mode))
+        self.css_provider = None
+        self._app_rows = {}
+        self._installing_apps = set()
+
         self._build_ui()
+        self._apply_theme()
+        self._refresh_texts()
 
-    def _build_ui(self) -> None:
-        central = QWidget()
-        self.setCentralWidget(central)
-        main_layout = QVBoxLayout(central)
-        main_layout.setContentsMargins(28, 24, 28, 28)
-        main_layout.setSpacing(18)
+    def _detect_system_theme(self) -> str:
+        try:
+            sm = Adw.StyleManager.get_default()
+            return "night" if sm.get_dark() else "day"
+        except Exception:
+            return "night"
 
-        # Header
-        header = QHBoxLayout()
-        header.setSpacing(14)
+    def _resolve_theme_key(self) -> str:
+        if self.theme_mode in ("day", "night"):
+            return self.theme_mode
+        return self._detect_system_theme()
 
-        logo_lbl = QLabel()
-        if ICON_PATH.exists():
-            pm = QPixmap(str(ICON_PATH))
-            if not pm.isNull():
-                logo_lbl.setPixmap(pm.scaled(52, 52, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-        logo_lbl.setFixedSize(52, 52)
-        header.addWidget(logo_lbl)
+    def _apply_theme(self):
+        """Applies solid Day (#F4F1EA/#EFECE6/#2B2A27/#1A3328) or Night (#080C0A/#101613/#E8E4DA/#589E7B) theme."""
+        active_key = self._resolve_theme_key()
+        is_day = (active_key == "day")
 
-        h_text = QVBoxLayout()
-        h_text.setSpacing(2)
-        self.title_lbl = QLabel(t("app_title"))
-        self.title_lbl.setObjectName("title")
-        self.subtitle_lbl = QLabel(t("app_subtitle"))
-        self.subtitle_lbl.setObjectName("subtitle")
-        h_text.addWidget(self.title_lbl)
-        h_text.addWidget(self.subtitle_lbl)
-        header.addLayout(h_text)
-        header.addStretch()
+        if is_day:
+            bg = "#F4F1EA"
+            card = "#EFECE6"
+            card_border = "rgba(26, 51, 40, 0.15)"
+            text = "#2B2A27"
+            dim = "#6B6862"
+            accent = "#1A3328"
+            accent_hover = "#284e3e"
+            accent_text = "#F4F1EA"
+            header_bg = "#EAE5DC"
+        else:
+            bg = "#080C0A"
+            card = "#101613"
+            card_border = "rgba(88, 158, 123, 0.20)"
+            text = "#E8E4DA"
+            dim = "#8A948E"
+            accent = "#589E7B"
+            accent_hover = "#6db893"
+            accent_text = "#080C0A"
+            header_bg = "#0d1310"
 
-        # Theme dropdown
-        self.theme_combo = QComboBox()
-        self.theme_combo.setCursor(Qt.PointingHandCursor)
-        self._rebuild_theme_combo()
-        self.theme_combo.currentIndexChanged.connect(self._on_theme_changed)
-        header.addWidget(self.theme_combo)
+        css_text = f"""
+        window, window.background {{
+            border-radius: 16px;
+            background: {bg};
+            color: {text};
+        }}
 
-        # Language dropdown
-        self.lang_combo = QComboBox()
-        self.lang_combo.setCursor(Qt.PointingHandCursor)
+        headerbar {{
+            background: {header_bg};
+            border-bottom: 1px solid {card_border};
+            color: {text};
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+        }}
+
+        preferencesgroup > box {{
+            background: {card};
+            border: 1px solid {card_border};
+            border-radius: 14px;
+            padding: 4px;
+            color: {text};
+        }}
+
+        .boxed-list {{
+            background: {card};
+            border: 1px solid {card_border};
+            border-radius: 14px;
+            color: {text};
+        }}
+
+        .boxed-list row {{
+            border-bottom: 1px solid {card_border};
+            color: {text};
+        }}
+
+        .suggested-action {{
+            background: {accent};
+            color: {accent_text};
+            font-weight: 700;
+            border: none;
+        }}
+
+        .suggested-action:hover {{
+            background: {accent_hover};
+        }}
+
+        .destructive-action {{
+            background: #ef4444;
+            color: #ffffff;
+            font-weight: 700;
+            border: none;
+        }}
+
+        popover contents, popover .view, popover listview {{
+            background-color: {card};
+            color: {text};
+            border-radius: 12px;
+            border: 1px solid {card_border};
+            padding: 6px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }}
+
+        popover listview row {{
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin: 2px 0;
+            min-height: 38px;
+            color: {text};
+        }}
+
+        popover listview row:selected, popover listview row:hover {{
+            background: {card_border};
+            color: {accent};
+        }}
+        """
+
+        if self.css_provider is not None:
+            Gtk.StyleContext.remove_provider_for_display(
+                Gdk.Display.get_default(),
+                self.css_provider
+            )
+
+        self.css_provider = Gtk.CssProvider()
+        self.css_provider.load_from_data(css_text.encode('utf-8'))
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            self.css_provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+
+    def _build_ui(self):
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.set_content(main_box)
+
+        # Header Bar
+        self.header_bar = Adw.HeaderBar()
+        main_box.append(self.header_bar)
+
+        # Language Selector
+        self.lang_btn = Gtk.MenuButton()
+        self.lang_btn.add_css_class("flat")
+        self.lang_btn.set_tooltip_text("Language / Dil")
+
+        lang_btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        lang_icon = Gtk.Image.new_from_icon_name("preferences-desktop-locale-symbolic")
+        self.lang_btn_label = Gtk.Label(label=LANGUAGES.get(self.current_lang, "English"))
+        self.lang_btn_label.add_css_class("heading")
+        lang_btn_box.append(lang_icon)
+        lang_btn_box.append(self.lang_btn_label)
+        self.lang_btn.set_child(lang_btn_box)
+
+        lang_popover = Gtk.Popover()
+        lang_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        lang_box.set_margin_top(8)
+        lang_box.set_margin_bottom(8)
+        lang_box.set_margin_start(8)
+        lang_box.set_margin_end(8)
+
         for code, label in LANGUAGES.items():
-            self.lang_combo.addItem(f"{code.upper()} - {label}", code)
-        cur_idx = list(LANGUAGES.keys()).index(get_lang())
-        self.lang_combo.setCurrentIndex(cur_idx)
-        self.lang_combo.currentIndexChanged.connect(self._on_lang_changed)
-        header.addWidget(self.lang_combo)
+            btn = Gtk.Button(label=label)
+            btn.add_css_class("flat")
+            btn.connect("clicked", self._on_change_language, code, lang_popover)
+            lang_box.append(btn)
 
-        main_layout.addLayout(header)
+        lang_popover.set_child(lang_box)
+        self.lang_btn.set_popover(lang_popover)
+        self.header_bar.pack_start(self.lang_btn)
 
-        # Scrollable App List
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll_content = QWidget()
-        self.apps_layout = QVBoxLayout(scroll_content)
-        self.apps_layout.setSpacing(14)
-        self.apps_layout.setContentsMargins(0, 0, 0, 0)
+        # Theme Switcher
+        self.theme_btn = Gtk.MenuButton()
+        self.theme_btn.add_css_class("flat")
+        self.theme_btn.set_tooltip_text("Theme / Tema")
+        theme_btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        theme_icon = Gtk.Image.new_from_icon_name("display-brightness-symbolic")
+        self.theme_btn_label = Gtk.Label(label=t(f"theme_{self.theme_mode}", self.current_lang))
+        self.theme_btn_label.add_css_class("heading")
+        theme_btn_box.append(theme_icon)
+        theme_btn_box.append(self.theme_btn_label)
+        self.theme_btn.set_child(theme_btn_box)
 
-        self._app_cards: dict[str, dict] = {}
+        theme_popover = Gtk.Popover()
+        theme_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        theme_box.set_margin_top(8)
+        theme_box.set_margin_bottom(8)
+        theme_box.set_margin_start(8)
+        theme_box.set_margin_end(8)
+
+        for m_key in ("auto", "day", "night"):
+            m_btn = Gtk.Button(label=t(f"theme_{m_key}", self.current_lang))
+            m_btn.add_css_class("flat")
+            m_btn.connect("clicked", self._on_change_theme, m_key, theme_popover)
+            theme_box.append(m_btn)
+
+        theme_popover.set_child(theme_box)
+        self.theme_btn.set_popover(theme_popover)
+        self.header_bar.pack_start(self.theme_btn)
+
+        # Scrolled Window
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_vexpand(True)
+        scrolled.set_hexpand(True)
+        main_box.append(scrolled)
+
+        # Clamp Container
+        clamp = Adw.Clamp()
+        clamp.set_maximum_size(720)
+        clamp.set_tightening_threshold(560)
+        scrolled.set_child(clamp)
+
+        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=20)
+        content_box.set_margin_top(24)
+        content_box.set_margin_bottom(32)
+        content_box.set_margin_start(16)
+        content_box.set_margin_end(16)
+        clamp.set_child(content_box)
+
+        # 1. Header Banner
+        self.banner_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        self.banner_box.set_halign(Gtk.Align.CENTER)
+        self.banner_box.set_margin_top(12)
+        self.banner_box.set_margin_bottom(12)
+        content_box.append(self.banner_box)
+
+        if ICON_PATH.exists():
+            self.banner_icon = Gtk.Image.new_from_file(str(ICON_PATH))
+            self.banner_icon.set_pixel_size(96)
+        else:
+            self.banner_icon = Gtk.Image.new_from_icon_name("software-properties-symbolic")
+            self.banner_icon.set_pixel_size(84)
+        self.banner_box.append(self.banner_icon)
+
+        self.banner_title = Gtk.Label(label="Ramord Store")
+        self.banner_title.add_css_class("title-1")
+        self.banner_box.append(self.banner_title)
+
+        self.banner_desc = Gtk.Label()
+        self.banner_desc.add_css_class("body")
+        self.banner_desc.add_css_class("dim-label")
+        self.banner_desc.set_wrap(True)
+        self.banner_desc.set_justify(Gtk.Justification.CENTER)
+        self.banner_desc.set_max_width_chars(54)
+        self.banner_box.append(self.banner_desc)
+
+        # 2. Applications PreferencesGroup
+        self.apps_group = Adw.PreferencesGroup()
+        content_box.append(self.apps_group)
 
         for meta in APPS:
-            card = self._create_app_card(meta)
-            self.apps_layout.addWidget(card)
+            row = Adw.ActionRow()
+            row.set_title(meta.name)
+            row.set_subtitle(t(meta.desc_key, self.current_lang))
+            row.set_subtitle_lines(0)
 
-        # Direct Support & Feedback Card at the bottom
-        support_card = self._create_support_card()
-        self.apps_layout.addWidget(support_card)
-        self.apps_layout.addStretch()
+            # Icon Prefix
+            if Path(meta.icon_rel_path).exists():
+                icon_img = Gtk.Image.new_from_file(meta.icon_rel_path)
+                icon_img.set_pixel_size(44)
+            else:
+                icon_img = Gtk.Image.new_from_icon_name("application-x-executable-symbolic")
+                icon_img.set_pixel_size(40)
+            row.add_prefix(icon_img)
 
-        scroll.setWidget(scroll_content)
-        main_layout.addWidget(scroll)
+            # Suffix buttons
+            btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            btn_box.set_valign(Gtk.Align.CENTER)
 
-    def _create_app_card(self, meta: AppMeta) -> QFrame:
-        card = QFrame()
-        card.setObjectName("card")
-        layout = QVBoxLayout(card)
-        layout.setContentsMargins(20, 18, 20, 18)
-        layout.setSpacing(12)
+            btn_launch = Gtk.Button(label=t("btn_launch", self.current_lang))
+            btn_launch.connect("clicked", lambda b, m=meta: self._launch_app(m))
+            btn_box.append(btn_launch)
 
-        top_row = QHBoxLayout()
-        top_row.setSpacing(14)
+            btn_action = Gtk.Button()
+            btn_action.add_css_class("suggested-action")
+            btn_action.connect("clicked", lambda b, m=meta: self._install_app(m))
+            btn_box.append(btn_action)
 
-        icon_lbl = QLabel()
-        if Path(meta.icon_rel_path).exists():
-            pm = QPixmap(meta.icon_rel_path)
-            if not pm.isNull():
-                icon_lbl.setPixmap(pm.scaled(46, 46, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-        icon_lbl.setFixedSize(46, 46)
-        top_row.addWidget(icon_lbl)
+            btn_mail = Gtk.Button.new_from_icon_name("mail-send-symbolic")
+            btn_mail.set_tooltip_text(t("btn_support_app", self.current_lang))
+            btn_mail.connect("clicked", lambda b, m=meta: self._open_email_for_app(m))
+            btn_box.append(btn_mail)
 
-        info_col = QVBoxLayout()
-        info_col.setSpacing(3)
-        name_lbl = QLabel(meta.name)
-        name_lbl.setObjectName("appName")
-        status_lbl = QLabel()
-        info_col.addWidget(name_lbl)
-        info_col.addWidget(status_lbl)
-        top_row.addLayout(info_col)
-        top_row.addStretch()
+            row.add_suffix(btn_box)
+            self.apps_group.add(row)
 
-        # Action Buttons
-        btn_action = QPushButton()
-        btn_action.setObjectName("btnPrimary")
-        btn_action.setCursor(Qt.PointingHandCursor)
-        btn_action.clicked.connect(lambda _=False, m=meta: self._install_app(m))
-        top_row.addWidget(btn_action)
+            self._app_rows[meta.id] = {
+                "meta": meta,
+                "row": row,
+                "btn_launch": btn_launch,
+                "btn_action": btn_action,
+                "btn_mail": btn_mail,
+            }
 
-        btn_launch = QPushButton(t("btn_launch"))
-        btn_launch.setCursor(Qt.PointingHandCursor)
-        btn_launch.clicked.connect(lambda _=False, m=meta: self._launch_app(m))
-        top_row.addWidget(btn_launch)
+        # 3. Support & Feedback Card
+        self.support_group = Adw.PreferencesGroup()
+        content_box.append(self.support_group)
 
-        btn_mail = QPushButton(t("btn_support_app"))
-        btn_mail.setObjectName("btnSupport")
-        btn_mail.setCursor(Qt.PointingHandCursor)
-        btn_mail.clicked.connect(lambda _=False, m=meta: self._open_email_for_app(m))
-        top_row.addWidget(btn_mail)
+        self.support_row = Adw.ActionRow()
+        self.support_row.set_subtitle_lines(0)
 
-        layout.addLayout(top_row)
+        mail_icon = Gtk.Image.new_from_icon_name("mail-message-new-symbolic")
+        mail_icon.set_pixel_size(36)
+        self.support_row.add_prefix(mail_icon)
 
-        desc_lbl = QLabel(t(meta.desc_key))
-        desc_lbl.setObjectName("appDesc")
-        desc_lbl.setWordWrap(True)
-        layout.addWidget(desc_lbl)
+        sup_btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        sup_btn_box.set_valign(Gtk.Align.CENTER)
 
-        self._app_cards[meta.id] = {
-            "meta": meta,
-            "status_lbl": status_lbl,
-            "desc_lbl": desc_lbl,
-            "btn_action": btn_action,
-            "btn_launch": btn_launch,
-            "btn_mail": btn_mail,
-        }
+        self.btn_copy_mail = Gtk.Button(label=t("btn_copy_email", self.current_lang))
+        self.btn_copy_mail.connect("clicked", self._copy_email)
+        sup_btn_box.append(self.btn_copy_mail)
 
-        self._update_card_state(meta.id)
-        return card
+        self.btn_open_mail = Gtk.Button(label=t("btn_send_email", self.current_lang))
+        self.btn_open_mail.add_css_class("suggested-action")
+        self.btn_open_mail.connect("clicked", lambda b: self._open_email_for_app(None))
+        sup_btn_box.append(self.btn_open_mail)
 
-    def _create_support_card(self) -> QFrame:
-        card = QFrame()
-        card.setObjectName("card")
-        layout = QVBoxLayout(card)
-        layout.setContentsMargins(20, 18, 20, 18)
-        layout.setSpacing(12)
-
-        self.support_title = QLabel(t("support_title"))
-        self.support_title.setObjectName("appName")
-        self.support_desc = QLabel(t("support_desc"))
-        self.support_desc.setObjectName("appDesc")
-        self.support_desc.setWordWrap(True)
-        layout.addWidget(self.support_title)
-        layout.addWidget(self.support_desc)
-
-        bottom_row = QHBoxLayout()
-        bottom_row.setSpacing(12)
-
-        self.email_display = QLabel(f"<b>{OFFICIAL_EMAIL}</b>")
-        self.email_display.setStyleSheet(f"color: {PRIMARY}; font-size: 15px;")
-        bottom_row.addWidget(self.email_display)
-        bottom_row.addStretch()
-
-        self.btn_open_mail = QPushButton(t("btn_send_email"))
-        self.btn_open_mail.setObjectName("btnPrimary")
-        self.btn_open_mail.setCursor(Qt.PointingHandCursor)
-        self.btn_open_mail.clicked.connect(lambda: self._open_email_for_app(None))
-        bottom_row.addWidget(self.btn_open_mail)
-
-        self.btn_copy_mail = QPushButton(t("btn_copy_email"))
-        self.btn_copy_mail.setCursor(Qt.PointingHandCursor)
-        self.btn_copy_mail.clicked.connect(self._copy_email)
-        bottom_row.addWidget(self.btn_copy_mail)
-
-        layout.addLayout(bottom_row)
-        return card
+        self.support_row.add_suffix(sup_btn_box)
+        self.support_group.add(self.support_row)
 
     def _is_app_installed(self, meta: AppMeta) -> bool:
         if shutil.which(meta.bin_name):
             return True
-        desktop = Path.home() / f".local/share/applications/{meta.desktop_file}"
-        return desktop.exists()
+        desktop_dest = Path.home() / f".local/share/applications/{meta.desktop_file}"
+        return desktop_dest.exists()
 
-    def _update_card_state(self, app_id: str) -> None:
-        c = self._app_cards.get(app_id)
+    def _update_card_state(self, app_id: str):
+        c = self._app_rows.get(app_id)
         if not c:
             return
-        meta: AppMeta = c["meta"]
+        meta = c["meta"]
         installed = self._is_app_installed(meta)
+        is_installing = (meta.id in self._installing_apps)
 
-        if installed:
-            c["status_lbl"].setText(f"● {t('status_installed')}")
-            c["status_lbl"].setObjectName("statusInstalled")
-            c["status_lbl"].setStyleSheet(f"color: {GREEN}; font-weight: 600;")
-            c["btn_action"].setText(t("btn_update"))
-            c["btn_action"].setObjectName("")
-            c["btn_launch"].setVisible(True)
+        if is_installing:
+            c["btn_action"].set_label(t("installing", self.current_lang))
+            c["btn_action"].set_sensitive(False)
+            c["btn_launch"].set_visible(False)
+        elif installed:
+            c["btn_action"].set_label(t("btn_update", self.current_lang))
+            c["btn_action"].set_sensitive(True)
+            c["btn_launch"].set_visible(True)
         else:
-            c["status_lbl"].setText(f"○ {t('status_not_installed')}")
-            c["status_lbl"].setObjectName("statusNotInstalled")
-            c["status_lbl"].setStyleSheet(f"color: {DIM}; font-weight: 600;")
-            c["btn_action"].setText(t("btn_install"))
-            c["btn_action"].setObjectName("btnPrimary")
-            c["btn_launch"].setVisible(False)
+            c["btn_action"].set_label(t("btn_install", self.current_lang))
+            c["btn_action"].set_sensitive(True)
+            c["btn_launch"].set_visible(False)
 
-    def _install_app(self, meta: AppMeta) -> None:
-        c = self._app_cards.get(meta.id)
-        if c:
-            c["btn_action"].setEnabled(False)
-            c["btn_action"].setText(t("installing"))
+    def _install_app(self, meta: AppMeta):
+        self._installing_apps.add(meta.id)
+        self._update_card_state(meta.id)
 
-        worker = InstallWorker(meta)
-        worker.finished_signal.connect(self._on_install_finished)
-        self._workers.append(worker)
-        worker.start()
+        def worker():
+            proj_dir = Path.home() / f"Projeler/{meta.name.replace(' ', '')}"
+            success = True
+            msg = ""
+            try:
+                if not proj_dir.exists():
+                    r = subprocess.run(["git", "clone", "--depth", "1", meta.repo_url, str(proj_dir)],
+                                       capture_output=True, text=True, timeout=120)
+                    if r.returncode != 0:
+                        success = False
+                        msg = r.stderr or r.stdout
+                else:
+                    subprocess.run(["git", "pull"], cwd=str(proj_dir), capture_output=True, timeout=60)
 
-    def _on_install_finished(self, success: bool, msg: str) -> None:
-        if success:
-            self._update_card_state(msg)
-            QMessageBox.information(self, t("app_title"), t("op_success"))
-        else:
-            QMessageBox.warning(self, t("app_title"), f"{t('op_failed')}\n{msg}")
-            for meta in APPS:
+                if success:
+                    install_sh = proj_dir / "install.sh"
+                    if install_sh.exists():
+                        r2 = subprocess.run(["bash", str(install_sh)], cwd=str(proj_dir),
+                                            capture_output=True, text=True, timeout=120)
+                        if r2.returncode != 0:
+                            success = False
+                            msg = r2.stderr or r2.stdout
+                    else:
+                        success = False
+                        msg = "install.sh not found"
+            except Exception as e:
+                success = False
+                msg = str(e)
+
+            def on_done():
+                self._installing_apps.discard(meta.id)
                 self._update_card_state(meta.id)
+                dialog = Adw.MessageDialog(
+                    transient_for=self,
+                    heading=t("app_title", self.current_lang),
+                    body=t("op_success", self.current_lang) if success else (t("op_failed", self.current_lang) + "\n" + msg)
+                )
+                dialog.add_response("ok", "Tamam" if self.current_lang == "tr" else "OK")
+                dialog.present()
+                return False
 
-    def _launch_app(self, meta: AppMeta) -> None:
+            GLib.idle_add(on_done)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _launch_app(self, meta: AppMeta):
         try:
             subprocess.Popen([meta.bin_name], start_new_session=True)
         except Exception:
-            # Fallback to python runner if in local projects
             proj_dir = Path.home() / f"Projeler/{meta.name.replace(' ', '')}"
             if (proj_dir / "main.py").exists():
                 subprocess.Popen(["python3", str(proj_dir / "main.py")], start_new_session=True)
 
-    def _open_email_for_app(self, meta: AppMeta | None) -> None:
+    def _open_email_for_app(self, meta: AppMeta | None):
         subject = f"Support: {meta.name}" if meta else "Support Request - Ramord Ecosystem"
-        body = f"Hello Ramord Support Team,\n\nI need assistance with {meta.name if meta else 'an application'}:\n"
+        app_name = meta.name if meta else 'an application'
+        body = f'Hello Ramord Support Team,\n\nI need assistance with {app_name}:\n'
         mailto = f"mailto:{OFFICIAL_EMAIL}?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(body)}"
-        QDesktopServices.openUrl(mailto)
+        Gio.AppInfo.launch_default_for_uri(mailto, None)
 
-    def _copy_email(self) -> None:
-        QApplication.clipboard().setText(OFFICIAL_EMAIL)
-        self.btn_copy_mail.setText(t("copied"))
-        QTimer.singleShot(2000, lambda: self.btn_copy_mail.setText(t("btn_copy_email")))
+    def _copy_email(self, button):
+        clipboard = Gdk.Display.get_default().get_clipboard()
+        clipboard.set(OFFICIAL_EMAIL)
+        self.btn_copy_mail.set_label(t("copied", self.current_lang))
+        GLib.timeout_add(2000, lambda: self.btn_copy_mail.set_label(t("btn_copy_email", self.current_lang)) or False)
 
-    def _resolve_theme_key(self, mode: str) -> str:
-        if mode in ("day", "night"):
-            return mode
-        return detect_system_theme()
+    def _on_change_language(self, button, code, popover):
+        self.current_lang = code
+        set_lang(code)
+        popover.popdown()
+        self._refresh_texts()
 
-    def _apply_active_theme(self, theme_key: str) -> None:
-        global ACTIVE_THEME_KEY, PRIMARY, PRIMARY_HOVER, PRIMARY_DARK, TEXT, DIM
-        ACTIVE_THEME_KEY = theme_key
-        t_cfg = THEMES.get(theme_key, THEMES["night"])
-        PRIMARY = t_cfg["accent"]
-        PRIMARY_HOVER = t_cfg["accent_hover"]
-        PRIMARY_DARK = t_cfg["accent"]
-        TEXT = t_cfg["text"]
-        DIM = t_cfg["dim"]
+    def _on_change_theme(self, button, mode, popover):
+        self.theme_mode = mode
+        popover.popdown()
+        self._apply_theme()
+        self._refresh_texts()
 
-        app = QApplication.instance()
-        if app is not None:
-            app.setStyleSheet(build_qss(theme_key))
-        if hasattr(self, "email_display"):
-            self.email_display.setStyleSheet(f"color: {PRIMARY}; font-size: 15px;")
+    def _refresh_texts(self):
+        lang = self.current_lang
+        self.set_title(t("app_title", lang))
+        self.banner_title.set_label(t("app_title", lang))
+        self.banner_desc.set_label(t("app_subtitle", lang))
+        self.lang_btn_label.set_label(LANGUAGES.get(lang, "English"))
+        self.theme_btn_label.set_label(t(f"theme_{self.theme_mode}", lang))
 
-    def _rebuild_theme_combo(self) -> None:
-        if not hasattr(self, "theme_combo"):
-            return
-        self.theme_combo.blockSignals(True)
-        self.theme_combo.clear()
-        self.theme_combo.addItem(f"{t('theme_auto')}", "auto")
-        self.theme_combo.addItem(f"{t('theme_day')}", "day")
-        self.theme_combo.addItem(f"{t('theme_night')}", "night")
-        idx = {"auto": 0, "day": 1, "night": 2}.get(self.theme_mode, 0)
-        self.theme_combo.setCurrentIndex(idx)
-        self.theme_combo.blockSignals(False)
+        self.apps_group.set_title(html.escape(t("tab_apps", lang)))
+        for meta in APPS:
+            c = self._app_rows.get(meta.id)
+            if c:
+                c["row"].set_subtitle(t(meta.desc_key, lang))
+                c["btn_launch"].set_label(t("btn_launch", lang))
+                c["btn_mail"].set_tooltip_text(t("btn_support_app", lang))
+                self._update_card_state(meta.id)
 
-    def _on_theme_changed(self, index: int) -> None:
-        mode = self.theme_combo.itemData(index)
-        if mode in ("auto", "day", "night"):
-            self.theme_mode = mode
-            self._apply_active_theme(self._resolve_theme_key(mode))
-
-    def _on_lang_changed(self, index: int) -> None:
-        code = self.lang_combo.itemData(index)
-        if code in LANGUAGES:
-            set_lang(code)
-            self._update_all_texts()
-
-    def _update_all_texts(self) -> None:
-        self.setWindowTitle(t("app_title"))
-        self.title_lbl.setText(t("app_title"))
-        self.subtitle_lbl.setText(t("app_subtitle"))
-        self.support_title.setText(t("support_title"))
-        self.support_desc.setText(t("support_desc"))
-        self.btn_open_mail.setText(t("btn_send_email"))
-        self.btn_copy_mail.setText(t("btn_copy_email"))
-        self._rebuild_theme_combo()
-
-        for app_id, c in self._app_cards.items():
-            meta: AppMeta = c["meta"]
-            c["desc_lbl"].setText(t(meta.desc_key))
-            c["btn_launch"].setText(t("btn_launch"))
-            c["btn_mail"].setText(t("btn_support_app"))
-            self._update_card_state(app_id)
+        self.support_group.set_title(html.escape(t("tab_support", lang)))
+        self.support_row.set_title(t("support_title", lang))
+        self.support_row.set_subtitle(f"{t('support_desc', lang)}\n{OFFICIAL_EMAIL}")
+        self.btn_copy_mail.set_label(t("btn_copy_email", lang))
+        self.btn_open_mail.set_label(t("btn_send_email", lang))
 
 
-def main() -> int:
-    app = QApplication(sys.argv)
-    app.setApplicationName("ramord-store")
-    app.setDesktopFileName("ramord-store")
-    if ICON_PATH.exists():
-        app.setWindowIcon(QIcon(str(ICON_PATH)))
-    app.setStyleSheet(STYLE)
+class RamordStoreApp(Adw.Application):
+    def __init__(self):
+        super().__init__(
+            application_id="com.ramord.store",
+            flags=Gio.ApplicationFlags.DEFAULT_FLAGS
+        )
 
-    window = MainWindow()
-    window.show()
-    return app.exec()
+    def do_activate(self):
+        windows = self.get_windows()
+        if not windows:
+            win = RamordStoreWindow(self)
+            win.present()
+        else:
+            for w in list(windows):
+                w.close()
+            self.quit()
+
+
+def main():
+    app = RamordStoreApp()
+
+    def handle_sig(sig, frame):
+        for w in list(app.get_windows()):
+            try:
+                w.close()
+            except Exception:
+                pass
+        app.quit()
+
+    try:
+        signal.signal(signal.SIGINT, handle_sig)
+        signal.signal(signal.SIGTERM, handle_sig)
+    except Exception:
+        pass
+
+    return app.run(sys.argv)
 
 
 if __name__ == "__main__":
