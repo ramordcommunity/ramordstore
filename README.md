@@ -59,7 +59,7 @@ You can launch Ramord Store in either way:
 ### Temel Özellikler
 
 1. **Uygulama Yönetimi:**
-   - Ramord Link, Ramord Cast ve Ramord CAD uygulamalarını doğrudan kurma, güncelleme ve tek tıkla çalıştırma.
+   - Ramord Link, Ramord Cast ve Ramord CAD uygulamalarını doğrudan kurma, güncelleme ve çalıştırma.
    - Bilgisayarınızdaki kurulu uygulamaların durumunu otomatik olarak algılama.
 
 2. **Doğrudan E-Posta Desteği:**
