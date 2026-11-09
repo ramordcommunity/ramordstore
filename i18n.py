@@ -220,7 +220,15 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "fr": "Mode Jour",
         "it": "Modalità Giorno",
     },
-    "theme_night": {
+        "status_up_to_date": {
+        "tr": "Güncel",
+        "en": "Up to Date",
+        "de": "Aktuell",
+        "es": "Actualizado",
+        "fr": "À jour",
+        "it": "Aggiornato",
+    },
+"theme_night": {
         "tr": "Gece Modu",
         "en": "Night Mode",
         "de": "Nachtmodus",

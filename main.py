@@ -417,6 +417,20 @@ class RamordStoreWindow(Adw.ApplicationWindow):
         desktop_dest = Path.home() / f".local/share/applications/{meta.desktop_file}"
         return desktop_dest.exists()
 
+    def _is_app_up_to_date(self, meta: AppMeta) -> bool:
+        proj_dir = Path.home() / f"Projeler/{meta.name.replace(' ', '')}"
+        if not proj_dir.exists():
+            return False
+        git_dir = proj_dir / ".git"
+        if not git_dir.exists():
+            return True
+        try:
+            local_rev = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=str(proj_dir), text=True, timeout=2).strip()
+            remote_rev = subprocess.check_output(["git", "rev-parse", "@{u}"], cwd=str(proj_dir), text=True, timeout=2).strip()
+            return local_rev == remote_rev
+        except Exception:
+            return True
+
     def _update_card_state(self, app_id: str):
         c = self._app_rows.get(app_id)
         if not c:
@@ -428,14 +442,23 @@ class RamordStoreWindow(Adw.ApplicationWindow):
         if is_installing:
             c["btn_action"].set_label(t("installing", self.current_lang))
             c["btn_action"].set_sensitive(False)
+            c["btn_action"].remove_css_class("suggested-action")
             c["btn_launch"].set_visible(False)
         elif installed:
-            c["btn_action"].set_label(t("btn_update", self.current_lang))
-            c["btn_action"].set_sensitive(True)
             c["btn_launch"].set_visible(True)
+            up_to_date = self._is_app_up_to_date(meta)
+            if up_to_date:
+                c["btn_action"].set_label(f"✓ {t('status_up_to_date', self.current_lang)}")
+                c["btn_action"].set_sensitive(False)
+                c["btn_action"].remove_css_class("suggested-action")
+            else:
+                c["btn_action"].set_label(t("btn_update", self.current_lang))
+                c["btn_action"].set_sensitive(True)
+                c["btn_action"].add_css_class("suggested-action")
         else:
             c["btn_action"].set_label(t("btn_install", self.current_lang))
             c["btn_action"].set_sensitive(True)
+            c["btn_action"].add_css_class("suggested-action")
             c["btn_launch"].set_visible(False)
 
     def _install_app(self, meta: AppMeta):
